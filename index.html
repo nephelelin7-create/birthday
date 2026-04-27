@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Your exclusive surprise</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Birthstone&display=swap');
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background: #fff9f0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            touch-action: none;
+        }
+
+        .cream-bg {
+            background: linear-gradient(180deg, #fff9f0 0%, #ffefd5 100%);
+            transition: background 1.0s ease;
+        }
+
+        .gift-btn {
+            padding: 16px 42px;
+            font-size: 1.25rem;
+            background: #ffb7c5; 
+            color: #fff;
+            border-radius: 50px;
+            border: 3px solid #fff;
+            cursor: pointer;
+            z-index: 1001;
+            font-weight: bold;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 0 rgba(255, 138, 162, 0.3);
+        }
+
+        /* --- 表情雨持续向上流动 --- */
+        .floating-item {
+            position: absolute; font-size: 2.2rem; pointer-events: none; z-index: 10;
+            bottom: -50px;
+            animation: floatUpContinuous 5s linear forwards;
+        }
+        @keyframes floatUpContinuous {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            15% { opacity: 0.8; }
+            85% { opacity: 0.8; }
+            100% { transform: translateY(-120vh) rotate(360deg); opacity: 0; }
+        }
+
+        /* --- 对话框样式：位置稍向左偏 --- */
+        .blessing-dialog {
+            position: absolute;
+            background: rgba(255, 238, 242, 0.88);
+            backdrop-filter: blur(5px);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1.5px solid rgba(255, 183, 197, 0.6);
+            color: #ff748c;
+            font-weight: bold;
+            font-size: 0.85rem;
+            z-index: 2000;
+            white-space: nowrap;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(255, 183, 197, 0.15);
+            transition: all 1.0s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .pop-in { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .fade-out-group { opacity: 0 !important; filter: blur(15px); transform: scale(1.3) translateY(-30px); }
+
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* --- 书信容器 --- */
+        #letter-container {
+            position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%);
+            width: 88%; max-width: 360px; 
+            background: rgba(255, 255, 255, 0.8); 
+            backdrop-filter: blur(15px);
+            padding: 24px; border-radius: 32px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            display: none; flex-direction: column; align-items: center; z-index: 5000;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            animation: fadeInLetter 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+
+        .letter-img { width: 100%; height: 210px; object-fit: cover; border-radius: 20px; margin-bottom: 18px; background: #eee; }
+        .letter-text { 
+            font-family: 'Noto Sans SC', sans-serif; font-size: 1.0rem; color: #444; 
+            text-align: justify; line-height: 1.7;
+        }
+
+        .next-prompt { 
+            font-size: 0.8rem; color: #ff85a2; font-weight: bold; 
+            margin-top: 20px; opacity: 0.8; animation: pulse 2s infinite;
+        }
+
+        #cake-text {
+            position: absolute; bottom: 10%; left: 0; width: 100%;
+            text-align: center; font-family: 'Birthstone', cursive;
+            font-size: 4rem; color: #ff85a2;
+            z-index: 4000; display: none; pointer-events: none;
+        }
+
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: none; }
+        
+        @keyframes fadeInLetter {
+            from { opacity: 0; transform: translate(-50%, -40%) scale(0.9); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        @keyframes pulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 0.3; } }
+    </style>
+</head>
+<body class="cream-bg">
+
+    <div id="app">
+        <div id="stage-start" class="absolute inset-0 flex items-center justify-center">
+            <button class="gift-btn" onclick="startSurprise()">开启惊喜 ฅ•ω•ฅ</button>
+        </div>
+
+        <div id="letter-container" onclick="nextLetter()">
+            <img id="curr-img" src="" class="letter-img" alt="回忆照片">
+            <div id="curr-text" class="letter-text"></div>
+            <div class="next-prompt">点击翻阅下一页</div>
+        </div>
+
+        <div id="cake-text">Happy Birthday</div>
+        <div id="canvas-container"></div>
+    </div>
+
+<audio id="bgm" loop preload="auto">
+    <source src="bgm.mp3" type="audio/mpeg">
+</audio>
+
+    <script>
+        const config = {
+            letters: [
+                { img: 'pic1.jpg', text: '生日快乐呀！还记得这张搞笑的照片，我们在婆婆那里拍的，时间过得真快呀！一切都变了，只留下破旧的记忆碎片，抱歉没能成为你的臂膀，也没有兑现当时年少许下的诺言，无论如何我都会在这里祝福着你，祝你幸福快乐！' },
+                { img: 'pic2.jpg', text: '这是我第一次去那么远的地方:北京，这是我最难的旅行，那天你陪着我逛，我第一次见到竟然会有这么大的一个地方，很感谢你，能让我去到了那么多的地方。我也希望你无论多久无论多远，也不要放弃去追风。' },
+                { img: 'pic3.jpg', text: '愿你肆意游离、不负热爱，永远做自己的唯一。' }
+            ],
+            blessings: [
+                "万事胜意 (ﾐ´ω`ﾐ)", "平安喜乐 ฅ^•ﻌ•^ฅ", "岁岁平安 (≈^• ⩊ •^≈)", "好运加满 (≚ᄌ≚)", "永远开心 ﾐ・ω・ﾐ", 
+                "心想事成 ✨", "光芒万丈 🌟", "快乐无限 🎈", "顺风顺水 ⛵", "可爱依旧 🎀", "星辰大海 🌊", "如愿以偿 🌙", 
+                "被爱包围 ❤️", "无忧无虑 🍃", "光阴温柔 ⏳", "自由自在 🕊️", "满眼星光 ✨", "步履不停 🏃", 
+                "未来可期 🌈", "一生温暖 ☀️", "保持可爱 🧸", "好梦常在 💤", "灿烂如花 🌻", "喜乐年华 🎊", 
+                "温柔有光 🕯️", "前程似锦 🚀", "笑逐颜开 😄", "万象更新 🎡", "吉祥如意 🧧", "春暖花开 🌸",
+                "熠熠生辉 💫", "乘风破浪 🏄", "好事连连 🍀", "岁月静好 🍵", "随心所欲 🦋", "闪闪发光 💎", 
+                "所求皆如愿 🌟", "万事顺遂 🎐", "天天开心 😊", "岁岁常欢愉 🎇", "年年皆胜意 🎆", "暴富暴美 💰", 
+                "梦想成真 🌠", "快乐加倍 🍭", "好运常伴 🐞", "眼里有光 👀", "笑容满面 😁", "幸福美满 💖", 
+                "活力满满 🔋", "青春常驻 🌿", "闪耀全场 ✨", "无惧风雨 ☂️", "勇敢前行 🛤️", "繁花似锦 🌺", 
+                "诗和远方 🏕️", "快乐无边 ♾️", "永远十八 🎂", "不败美人 💃", "心中有爱 🥰", "一切顺利 💯",
+                "遇见美好 🌱", "天天好心情 🌞", "被温柔以待 🌍", "出门遇皆贵人 👫", "万事皆可期 🔮", "累了就回家喝碗汤吧 🍯", 
+                "惊喜不断 🎁", "一生平安 🕊️", "好胃口 🍔", "好睡眠 🛌", "一生相伴 👫", "笑出声来 😂", 
+                "生意兴隆 📈", "长乐未央 🕯️", "眼里有光 ✨", "简单快乐 🍦", "清澈明朗 💎", "独立优秀 👑", 
+                "无畏无惧 🛡️", "顺心如意 🏮", "所得皆所期 🌈", "所失皆无碍 🍃", "未来闪耀 💫", "平安顺遂 🍎", 
+                "快乐起飞 🚀", "温柔而坚定 🏔️", "光芒万丈 ☀️", "此生尽兴 🍷", "诸事大吉 🧧", "福气满满 🥟",
+                "满心欢喜 💓", "遇见幸运 🍀", "知足常乐 🍵", "向阳而生 🌻", "百事从欢 🤝", "年年皆胜 🎠",
+                "万物可爱 🐈", "自在如风 🌬️", "心有锦缎 🧣", "眉目舒展 😌", "平安喜乐 🎬"
+            ]
+        };
+
+        let currentLetterIdx = 0;
+        let scene, camera, renderer, particles, starField, radialParticles;
+        let mode = 'waiting'; 
+        let emojiInterval;
+
+        function createCircleTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.beginPath();
+            ctx.arc(32, 32, 30, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            return new THREE.CanvasTexture(canvas);
+        }
+        const circleTex = createCircleTexture();
+
+        async function startSurprise() {
+            document.getElementById('bgm').play().catch(() => {});
+            document.getElementById('stage-start').style.display = 'none';
+
+            const items = ['🎈','🍰','🎂','🍓','🌸','🍭','✨','💖','🎀','🍪'];
+            const allActiveEmojis = [];
+
+            // 1. 表情雨启动
+            emojiInterval = setInterval(() => {
+                const el = document.createElement('div');
+                el.className = 'floating-item';
+                el.innerText = items[Math.floor(Math.random()*items.length)];
+                el.style.left = (Math.random() * 95) + 'vw';
+                document.body.appendChild(el);
+                allActiveEmojis.push(el);
+                setTimeout(() => { el.remove(); allActiveEmojis.shift(); }, 5500);
+            }, 100);
+
+            await new Promise(r => setTimeout(r, 1000));
+
+            // 2. 100个对话框依次弹出 (稍微调快一点以保持紧凑)
+            const dialogs = [];
+            for(let i=0; i<100; i++){
+                setTimeout(() => {
+                    const el = document.createElement('div');
+                    el.className = 'blessing-dialog pop-in';
+                    el.innerText = config.blessings[i];
+                    el.style.top = (5 + Math.random() * 85) + 'vh';
+                    el.style.left = (2 + Math.random() * 60) + 'vw'; // 截图偏左效果
+                    document.body.appendChild(el);
+                    dialogs.push(el);
+                }, i * 80); 
+            }
+
+            // 弹出完毕后只停留 2 秒
+            await new Promise(r => setTimeout(r, 80 * 100 + 2000));
+
+            // 3. 触发粒子放射转场
+            clearInterval(emojiInterval);
+            document.body.style.background = '#000';
+            document.getElementById('canvas-container').style.display = 'block';
+            initThreeJS();
+            
+            // 粒子模式设为放射
+            mode = 'radial'; 
+
+            // 同时让所有 UI 元素虚化消失
+            const fadeElements = [...dialogs, ...allActiveEmojis];
+            fadeElements.forEach((el, idx) => {
+                setTimeout(() => {
+                    el.classList.add('fade-out-group');
+                    setTimeout(() => el.remove(), 1000);
+                }, idx * 5);
+            });
+
+            // 粒子放射 1 秒后立即弹出书信
+            await new Promise(r => setTimeout(r, 1200));
+            showLetter();
+        }
+
+        function showLetter() {
+            if(currentLetterIdx >= config.letters.length) {
+                document.getElementById('letter-container').style.display = 'none';
+                startFinalCake(); return;
+            }
+            const item = config.letters[currentLetterIdx];
+            document.getElementById('curr-img').src = item.img;
+            document.getElementById('curr-text').innerText = item.text;
+            document.getElementById('letter-container').style.display = 'flex';
+        }
+        function nextLetter() { currentLetterIdx++; showLetter(); }
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 3000);
+            camera.position.z = 220; 
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // 背景星空
+            const starGeo = new THREE.BufferGeometry();
+            const starCoords = [];
+            for(let i=0; i<2000; i++) starCoords.push((Math.random()-0.5)*2000, (Math.random()-0.5)*2000, (Math.random()-0.5)*2000);
+            starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starCoords, 3));
+            starField = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xFFFFFF, size: 0.6, transparent: true, opacity: 0.4 }));
+            scene.add(starField);
+
+            // 关键：放射粒子 (从中心向四周喷射)
+            const radialGeo = new THREE.BufferGeometry();
+            const rCoords = []; const rVels = [];
+            for(let i=0; i<1200; i++){
+                rCoords.push(0, 0, 0); // 全部从中心点开始
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+                const spd = 6 + Math.random() * 10;
+                rVels.push(spd * Math.sin(phi) * Math.cos(theta), spd * Math.sin(phi) * Math.sin(theta), spd * Math.cos(phi));
+            }
+            radialGeo.setAttribute('position', new THREE.Float32BufferAttribute(rCoords, 3));
+            radialParticles = new THREE.Points(radialGeo, new THREE.PointsMaterial({ 
+                color: 0xfff4d2, size: 2.8, map: circleTex, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false 
+            }));
+            radialParticles.velocities = rVels;
+            scene.add(radialParticles);
+
+            animate();
+        }
+
+        function getStarPoints(outerR, innerR, yOffset) {
+            const points = [];
+            for (let i = 0; i < 11; i++) {
+                const angle = (i * Math.PI * 2) / 10 - Math.PI / 2;
+                const r = i % 2 === 0 ? outerR : innerR;
+                points.push(new THREE.Vector2(r * Math.cos(angle), r * Math.sin(angle) + yOffset));
+            }
+            return points;
+        }
+
+        function startFinalCake() {
+            mode = 'cake';
+            document.getElementById('cake-text').style.display = 'block';
+            const pts = []; const cls = [];
+            
+            const layers = [
+                { r: 75, h: 40, y: -50, count: 8000, color: [1.0, 0.4, 0.6] }, 
+                { r: 60, h: 35, y: -10, count: 6500, color: [1.0, 0.55, 0.7] },  
+                { r: 45, h: 30, y: 25, count: 5000, color: [1.0, 0.7, 0.8] }   
+            ];
+            layers.forEach(l => {
+                for(let i=0; i<l.count; i++) {
+                    const theta = Math.random() * Math.PI * 2;
+                    const rad = Math.sqrt(Math.random()) * l.r;
+                    pts.push(rad * Math.cos(theta), l.y + Math.random()*l.h, rad * Math.sin(theta));
+                    cls.push(l.color[0], l.color[1], l.color[2]);
+                }
+            });
+
+            const starNodes = getStarPoints(20, 10, 75); 
+            for(let i=0; i<1800; i++) {
+                const sideIdx = Math.floor(Math.random() * 10);
+                const p1 = starNodes[sideIdx];
+                const p2 = starNodes[sideIdx + 1];
+                const lerp = Math.random();
+                pts.push(p1.x * lerp + p2.x * (1 - lerp), p1.y * lerp + p2.y * (1 - lerp), (Math.random()-0.5)*10);
+                cls.push(1.0, 0.9, 0.2); 
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(cls, 3));
+            particles = new THREE.Points(geo, new THREE.PointsMaterial({ size: 1.2, map: circleTex, vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+            scene.add(particles);
+            setTimeout(() => transitionToHeart(), 4500);
+        }
+
+        function transitionToHeart() {
+            mode = 'heart';
+            const pos = particles.geometry.attributes.position.array;
+            const colors = particles.geometry.attributes.color.array; 
+            const heartT = [];
+            const pink = [1.0, 0.52, 0.63]; 
+            for(let i=0; i < pos.length/3; i++) {
+                let x, y, z;
+                while(true) {
+                    x = (Math.random() - 0.5) * 3; y = (Math.random() - 0.5) * 3; z = (Math.random() - 0.5) * 3;
+                    const v = Math.pow(x*x + (9/4)*y*y + z*z - 1, 3) - x*x*z*z*z - (9/80)*y*y*z*z*z;
+                    if(v < 0) break; 
+                }
+                heartT.push(x * 75, z * 75 + 15, y * 75); 
+                const colorIdx = i * 3;
+                colors[colorIdx] = pink[0]; colors[colorIdx + 1] = pink[1]; colors[colorIdx + 2] = pink[2];
+            }
+            particles.heartTarget = heartT;
+            particles.geometry.attributes.color.needsUpdate = true;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if(starField) starField.rotation.y += 0.0003;
+            
+            if(radialParticles) {
+                const p = radialParticles.geometry.attributes.position.array;
+                const v = radialParticles.velocities;
+                for(let i=0; i<p.length; i+=3) {
+                    p[i] += v[i]; p[i+1] += v[i+1]; p[i+2] += v[i+2];
+                    // 粒子飞太远后重置回中心，形成持续放射感
+                    if(Math.abs(p[i]) > 1000 || Math.abs(p[i+1]) > 1000) {
+                        p[i] = 0; p[i+1] = 0; p[i+2] = 0;
+                    }
+                }
+                radialParticles.geometry.attributes.position.needsUpdate = true;
+                // 切换模式后逐渐淡出放射粒子
+                if(mode !== 'radial' && radialParticles.material.opacity > 0) {
+                    radialParticles.material.opacity -= 0.015;
+                }
+            }
+
+            if(particles) {
+                particles.rotation.y += 0.005;
+                if(mode === 'heart') {
+                    const p = particles.geometry.attributes.position.array;
+                    const t = particles.heartTarget;
+                    for(let i=0; i<p.length; i++) p[i] += (t[i] - p[i]) * 0.1;
+                    particles.geometry.attributes.position.needsUpdate = true;
+                }
+            }
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
